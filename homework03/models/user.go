@@ -39,7 +39,7 @@ func (u *User) AddCharacter(name, element string) {
 		Element: element,
 	}
 	u.Characters = append(u.Characters, newChar)
-	fmt.Printf(" 获得新角色: %s (%s)\n", name, element)
+	fmt.Printf(" 用户 %s 获得新角色: %s (%s)\n", u.Username, name, element)
 }
 
 func (u *User) LevelUp() {

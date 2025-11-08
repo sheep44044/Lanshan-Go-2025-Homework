@@ -1,6 +1,7 @@
 package main
 
 import (
+	"awesomeProject1/homework03/initializers"
 	"awesomeProject1/homework03/services"
 	"awesomeProject1/homework03/utils"
 	"fmt"
@@ -10,7 +11,7 @@ func main() {
 
 	userService := services.NewUserService()
 
-	userService.InitExampleData()
+	initializers.InitExampleData(userService)
 
 	fmt.Println("🎮 欢迎使用原神用户管理系统!")
 
