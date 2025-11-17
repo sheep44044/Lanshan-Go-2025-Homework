@@ -1,0 +1,2 @@
+Hello world! 另一个hello示例
+最后一行包含hello
