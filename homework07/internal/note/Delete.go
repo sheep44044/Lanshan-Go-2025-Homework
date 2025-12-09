@@ -17,9 +17,28 @@ func (h *NoteHandler) DeleteNote(c *gin.Context) {
 		return
 	}
 
-	result := h.db.Delete(&models.Note{}, id)
+	userid, exists := c.Get("user_id")
+	if !exists {
+		utils.Error(c, http.StatusUnauthorized, "未登录")
+		return
+	}
+
+	userIDStr, ok := userid.(string)
+	if !ok {
+		utils.Error(c, http.StatusInternalServerError, "用户ID类型错误")
+		return
+	}
+	// 将字符串转回 uint
+	uid, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, "用户ID格式错误")
+		return
+	}
+	userID := uint(uid)
+
+	result := h.db.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Note{})
 	if result.RowsAffected == 0 {
-		utils.Error(c, http.StatusNotFound, "note not found")
+		utils.Error(c, http.StatusNotFound, "note not found or permission denied")
 		return
 	}
 
