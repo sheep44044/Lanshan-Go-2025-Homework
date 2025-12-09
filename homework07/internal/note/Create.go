@@ -5,6 +5,7 @@ import (
 	"awesomeProject1/homework07/internal/utils"
 	"awesomeProject1/homework07/internal/validators"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,11 +17,18 @@ func (h *NoteHandler) CreateNote(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userid.(uint)
+	userIDStr, ok := userid.(string)
 	if !ok {
 		utils.Error(c, http.StatusInternalServerError, "用户ID类型错误")
 		return
 	}
+	// 将字符串转回 uint
+	uid, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, "用户ID格式错误")
+		return
+	}
+	userID := uint(uid)
 
 	var req validators.CreateNoteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
