@@ -5,9 +5,9 @@ import (
 	"awesomeProject1/homework07/internal/utils"
 	"awesomeProject1/homework07/internal/validators"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -15,24 +15,11 @@ import (
 
 func (h *NoteHandler) UpdateNote(c *gin.Context) {
 	id := c.Param("id")
-	userid, exists := c.Get("user_id")
-	if !exists {
-		utils.Error(c, http.StatusUnauthorized, "未登录")
-		return
-	}
-
-	userIDStr, ok := userid.(string)
-	if !ok {
-		utils.Error(c, http.StatusInternalServerError, "用户ID类型错误")
-		return
-	}
-	// 将字符串转回 uint
-	uid, err := strconv.ParseUint(userIDStr, 10, 32)
+	userID, err := utils.GetUserID(c)
 	if err != nil {
-		utils.Error(c, http.StatusInternalServerError, "用户ID格式错误")
+		utils.Error(c, http.StatusUnauthorized, err.Error())
 		return
 	}
-	userID := uint(uid)
 
 	var req validators.UpdateNoteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -68,6 +55,12 @@ func (h *NoteHandler) UpdateNote(c *gin.Context) {
 		utils.Error(c, http.StatusInternalServerError, "update failed")
 		return
 	}
+
+	cacheKeyNote := "note:" + id
+	cacheKeyAllNotes := fmt.Sprintf("notes:user:%d", userID)
+
+	h.cache.Del(c, cacheKeyNote)
+	h.cache.Del(c, cacheKeyAllNotes)
 
 	h.db.First(&note, id)
 	utils.Success(c, note)

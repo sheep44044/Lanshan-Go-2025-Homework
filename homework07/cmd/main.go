@@ -2,6 +2,7 @@ package main
 
 import (
 	"awesomeProject1/homework07/config"
+	"awesomeProject1/homework07/internal/cache"
 	"awesomeProject1/homework07/internal/middleware"
 	"awesomeProject1/homework07/internal/models"
 	"awesomeProject1/homework07/internal/note"
@@ -19,6 +20,13 @@ func main() {
 		panic("failed to load config: " + err.Error())
 	}
 
+	rdb, err := cache.New(cfg)
+	if err != nil {
+		slog.Warn("Redis connection failed, continuing without Redis", "error", err)
+	} else {
+		slog.Info("Redis connected successfully")
+	}
+
 	dsn := cfg.DBUser + ":" + cfg.DBPassword + "@tcp(" + cfg.DBHost + ":" + cfg.DBPort + ")/" +
 		cfg.DBName + "?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -34,7 +42,7 @@ func main() {
 	r := gin.Default()
 	r.Use(middleware.LoggerMiddleware())
 
-	userHandler := user.NewUserHandler(db, cfg)
+	userHandler := user.NewUserHandler(db, cfg, rdb)
 	r.POST("/register", userHandler.Register)
 	r.POST("/login", userHandler.Login)
 
@@ -46,7 +54,7 @@ func main() {
 			users.PUT("/change-password", userHandler.ModifyPassword)
 		}
 
-		noteHandler := note.NewNoteHandler(db)
+		noteHandler := note.NewNoteHandler(db, rdb)
 		notes := auth.Group("/notes")
 		{
 			notes.GET("/:id", noteHandler.GetNote)

@@ -3,34 +3,36 @@ package note
 import (
 	"awesomeProject1/homework07/internal/models"
 	"awesomeProject1/homework07/internal/utils"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 func (h *NoteHandler) GetNote(c *gin.Context) {
-	id := c.Param("id")
-	userid, exists := c.Get("user_id")
-	if !exists {
-		utils.Error(c, http.StatusUnauthorized, "未登录")
+	userID, err := utils.GetUserID(c)
+	if err != nil {
+		utils.Error(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	userIDStr, ok := userid.(string)
-	if !ok {
-		utils.Error(c, http.StatusInternalServerError, "用户ID类型错误")
-		return
+	id := c.Param("id")
+	cacheKey := "note:" + id
+
+	cachedNote, err := h.cache.Get(c, cacheKey)
+	if err == nil {
+		var note models.Note
+		if err := json.Unmarshal([]byte(cachedNote), &note); err == nil {
+			slog.Debug("Notes retrieved from cache", "key", cacheKey)
+			utils.Success(c, note)
+			return
+		}
 	}
-	// 将字符串转回 uint
-	uid, err := strconv.ParseUint(userIDStr, 10, 32)
-	if err != nil {
-		utils.Error(c, http.StatusInternalServerError, "用户ID格式错误")
-		return
-	}
-	userID := uint(uid)
 
 	var note models.Note
 	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&note).Error; err != nil {
@@ -42,5 +44,42 @@ func (h *NoteHandler) GetNote(c *gin.Context) {
 		return
 	}
 
+	noteJSON, _ := json.Marshal(note)
+	h.cache.SetWithRandomTTL(c, cacheKey, string(noteJSON), 10*time.Minute)
+
 	utils.Success(c, note)
+}
+
+func (h *NoteHandler) GetNotes(c *gin.Context) {
+	userID, err := utils.GetUserID(c)
+	if err != nil {
+		utils.Error(c, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	cacheKey := fmt.Sprintf("notes:user:%d", userID)
+	cachedNotes, err := h.cache.Get(c, cacheKey)
+	if err == nil {
+		var notes []models.Note
+		if err := json.Unmarshal([]byte(cachedNotes), &notes); err == nil {
+			slog.Debug("Notes retrieved from cache", "key", cacheKey)
+			utils.Success(c, notes)
+			return
+		}
+	}
+
+	var notes []models.Note
+	err = h.db.Where("user_id = ?", userID).
+		Order("updated_at DESC").
+		Find(&notes).Error
+
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, "database error")
+		return
+	}
+
+	notesJSON, _ := json.Marshal(notes)
+	h.cache.SetWithRandomTTL(c, cacheKey, string(notesJSON), 10*time.Minute)
+
+	utils.Success(c, notes)
 }

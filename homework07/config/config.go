@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -19,6 +20,11 @@ type Config struct {
 	JWTSecretKey      string        `mapstructure:"JWT_SECRET_KEY"`
 	JWTIssuer         string        `mapstructure:"JWT_ISSUER"`
 	JWTExpirationTime time.Duration `mapstructure:"JWT_EXPIRATION_TIME"`
+
+	RedisHost     string `mapstructure:"REDIS_HOST"`
+	RedisPort     string `mapstructure:"REDIS_PORT"`
+	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
+	RedisDB       int    `mapstructure:"REDIS_DB"`
 }
 
 func Load() (*Config, error) {
@@ -47,6 +53,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("JWT_SECRET_KEY", "lanshan_homework07")
 	v.SetDefault("JWT_ISSUER", "note_app")
 	v.SetDefault("JWT_EXPIRATION_TIME", "24h")
+
+	v.SetDefault("REDIS_HOST", "localhost")
+	v.SetDefault("REDIS_PORT", "6379")
+	v.SetDefault("REDIS_PASSWORD", "")
+	v.SetDefault("REDIS_DB", "0")
 }
 
 func configureViper(v *viper.Viper) {
@@ -60,7 +71,8 @@ func configureViper(v *viper.Viper) {
 
 func readConfiguration(v *viper.Viper) error {
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		var configFileNotFoundError viper.ConfigFileNotFoundError
+		if errors.As(err, &configFileNotFoundError) {
 			fmt.Println("Warning: .env file not found, using defaults and system env")
 			return nil
 		}

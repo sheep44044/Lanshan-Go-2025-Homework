@@ -1,11 +1,16 @@
 package note
 
-import "gorm.io/gorm"
+import (
+	"awesomeProject1/homework07/internal/cache"
+
+	"gorm.io/gorm"
+)
 
 type NoteHandler struct {
-	db *gorm.DB
+	db    *gorm.DB
+	cache *cache.RedisCache
 }
 
-func NewNoteHandler(db *gorm.DB) *NoteHandler {
-	return &NoteHandler{db: db}
+func NewNoteHandler(db *gorm.DB, cache *cache.RedisCache) *NoteHandler {
+	return &NoteHandler{db: db, cache: cache}
 }
